@@ -8,6 +8,7 @@
     <style>
         :root {
             --primary: #0284c7;
+            --primary-hover: #0369a1;
             --bg-slate: #f8fafc;
             --card-bg: #ffffff;
             --text-main: #0f172a;
@@ -41,6 +42,25 @@
         input, select { width: 100%; padding: 9px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; background: #fff; }
         input:focus, select:focus { outline: none; border-color: var(--primary); }
 
+        .btn-print {
+            width: 100%;
+            padding: 10px;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background 0.2s;
+        }
+        .btn-print:hover { background: var(--primary-hover); }
+
         .risk-banner {
             padding: 12px 16px;
             border-radius: 8px;
@@ -65,12 +85,35 @@
         .kpi-title { font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
         .kpi-value { font-size: 1.1rem; font-weight: 700; margin-top: 2px; }
 
-        .chart-box { height: 300px; margin: 12px 0 20px 0; position: relative; }
+        .chart-box { height: 280px; margin: 12px 0 20px 0; position: relative; }
 
         .table-container { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.82rem; }
         th, td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
         th { background: var(--bg-slate); font-weight: 600; color: var(--text-muted); }
+
+        .print-header { display: none; }
+
+        /* PDF / Druck-Optimierung */
+        @media print {
+            body { background: #fff; color: #000; padding: 0; font-size: 11pt; }
+            .container { display: block; max-width: 100%; }
+            .card { border: none; box-shadow: none; padding: 0; margin-bottom: 15px; }
+            .btn-print, .form-group, p.desc { display: none !important; }
+            .print-header { 
+                display: block !important; 
+                border-bottom: 2px solid #000; 
+                padding-bottom: 10px; 
+                margin-bottom: 15px; 
+            }
+            .print-header h2 { font-size: 16pt; margin-bottom: 4px; }
+            .print-meta { font-size: 9pt; color: #444; display: flex; justify-content: space-between; }
+            .chart-box { height: 220px !important; page-break-inside: avoid; }
+            .table-container { page-break-inside: avoid; }
+            table th, table td { padding: 5px 8px; border-bottom: 1px solid #ccc; }
+            .risk-banner { border: 1px solid #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .kpi-card { border: 1px solid #ccc; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
     </style>
 </head>
 <body>
@@ -80,7 +123,7 @@
     <div class="card">
         <h1>Hx-Klimarechner Pro</h1>
         <p class="subtitle">TGA & Facility Management Edition</p>
-        <p class="desc">Gleichzeitige Analyse von relativer Feuchte (Behaglichkeit) und absoluten Feuchtegrößen (Anlagentechnik).</p>
+        <p class="desc">Gleichzeitige Analyse von relativer Feuchte (Behaglichkeit) und spezifischer Feuchte (Anlagentechnik).</p>
 
         <div class="form-group">
             <label for="roomType">Nutzungsbereich</label>
@@ -107,10 +150,23 @@
             <label for="pabs">Barometerdruck p<sub>abs</sub> (hPa)</label>
             <input type="number" id="pabs" value="1013.25" step="1">
         </div>
+
+        <button class="btn-print" onclick="window.print()">
+            📄 PDF-Bericht drucken
+        </button>
     </div>
 
-    <!-- Ergebnisse -->
+    <!-- Ergebnisse & Auswertung -->
     <div class="card">
+        <!-- Druckkopf (Nur beim Drucken sichtbar) -->
+        <div class="print-header">
+            <h2>Hx-Klimarechner Pro – Prüfprotokoll</h2>
+            <div class="print-meta">
+                <span id="print-params">Parameter: --</span>
+                <span id="print-date">Datum: --</span>
+            </div>
+        </div>
+
         <div id="riskBanner" class="risk-banner status-ok">
             <span id="riskIcon">✓</span>
             <span id="riskText">Berechne Werte...</span>
@@ -131,12 +187,12 @@
                 <div class="kpi-value" id="kpi-av1">-- g/m³</div>
             </div>
             <div class="kpi-card tech">
-                <div class="kpi-title">Max. Kondensat</div>
+                <div class="kpi-title">Max. Kondensat (Δx)</div>
                 <div class="kpi-value" id="kpi-cond">0.00 g/kg</div>
             </div>
         </div>
 
-        <div class="section-title">Temperaturverlauf & Duale Feuchte-Diagramme</div>
+        <div class="section-title">Temperaturverlauf & Feuchte-Diagramm</div>
         <div class="chart-box">
             <canvas id="dualChart"></canvas>
         </div>
@@ -147,10 +203,10 @@
                     <tr>
                         <th>Temp. (°C)</th>
                         <th>Rel. Feuchte (%) [Nutzer]</th>
-                        <th>Abs. Feuchte (g/m³) [Anlage]</th>
                         <th>Spez. Feuchte (g/kg) [Anlage]</th>
-                        <th>Kondensat (g/kg)</th>
-                        <th>Kondensat (g/m³)</th>
+                        <th>Abs. Feuchte (g/m³)</th>
+                        <th>Kondensat Δx (g/kg)</th>
+                        <th>Kondensat ΔA<sub>v</sub> (g/m³)</th>
                     </tr>
                 </thead>
                 <tbody id="result-table"></tbody>
@@ -239,10 +295,14 @@
         document.getElementById('kpi-av1').textContent = Av_base.toFixed(2) + ' g/m³';
         document.getElementById('kpi-cond').textContent = maxCondX > 0 ? `${maxCondX.toFixed(2)} g/kg` : '0.00 g/kg';
 
+        // Druck-Kopf Metadaten
+        document.getElementById('print-params').textContent = `Basis: ${T_base}°C (±${T_range}°C) | RH: ${RH_base}% | Druck: ${pabs} hPa`;
+        document.getElementById('print-date').textContent = `Datum: ${new Date().toLocaleDateString('de-DE')}`;
+
         // Datenreihen für Diagramm & Tabelle
         const labels = [];
         const rhData = [];
-        const absData = [];
+        const specData = [];
         const tbody = document.getElementById('result-table');
         tbody.innerHTML = '';
 
@@ -271,24 +331,24 @@
 
             labels.push(T.toFixed(1) + ' °C');
             rhData.push(rh_i.toFixed(1));
-            absData.push(Av_i.toFixed(2));
+            specData.push(x_i.toFixed(2));
 
             const isBaseRow = Math.abs(T - T_base) < 0.01;
             tbody.innerHTML += `<tr ${isBaseRow ? 'style="font-weight: bold; background: #f1f5f9;"' : ''}>
                 <td>${T.toFixed(1)} ${isBaseRow ? '(Basis)' : ''}</td>
                 <td>${rh_i.toFixed(1)} %</td>
-                <td>${Av_i.toFixed(2)}</td>
                 <td>${x_i.toFixed(2)}</td>
+                <td>${Av_i.toFixed(2)}</td>
                 <td>${cX > 0 ? cX.toFixed(2) : '-'}</td>
                 <td>${cAv > 0 ? cAv.toFixed(2) : '-'}</td>
             </tr>`;
         }
 
-        renderDualChart(labels, rhData, absData);
+        renderDualChart(labels, rhData, specData);
     }
 
-    // Chart.js mit doppelter Y-Achse
-    function renderDualChart(labels, rhData, absData) {
+    // Chart.js mit doppelter Y-Achse (Rel. Feuchte & Spez. Feuchte)
+    function renderDualChart(labels, rhData, specData) {
         const ctx = document.getElementById('dualChart').getContext('2d');
         if (chartInstance) chartInstance.destroy();
 
@@ -303,15 +363,15 @@
                         borderColor: '#0284c7',
                         backgroundColor: 'rgba(2, 132, 199, 0.08)',
                         fill: true,
-                        tension: 0.3,
+                        tension: 0.2,
                         yAxisID: 'y'
                     },
                     {
-                        label: 'Abs. Feuchte (g/m³) [Anlage]',
-                        data: absData,
+                        label: 'Spez. Feuchte x (g/kg) [Anlage]',
+                        data: specData,
                         borderColor: '#8b5cf6',
                         borderDash: [5, 5],
-                        tension: 0.3,
+                        tension: 0.2,
                         yAxisID: 'y1'
                     }
                 ]
@@ -319,6 +379,7 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                animation: false, // Für schnelles Rendering beim Drucken
                 interaction: { mode: 'index', intersect: false },
                 scales: {
                     x: {
@@ -337,7 +398,7 @@
                         type: 'linear',
                         position: 'right',
                         min: 0,
-                        title: { display: true, text: 'Abs. Feuchte (g/m³)', color: '#8b5cf6', font: { weight: 'bold' } },
+                        title: { display: true, text: 'Spez. Feuchte x (g/kg)', color: '#8b5cf6', font: { weight: 'bold' } },
                         ticks: { color: '#8b5cf6' },
                         grid: { drawOnChartArea: false }
                     }
