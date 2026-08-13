@@ -77,7 +77,7 @@
         .status-mold { background: var(--status-mold-bg); color: var(--status-mold-text); }
         .status-danger { background: var(--status-danger-bg); color: var(--status-danger-text); }
 
-        .section-title { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin: 12px 0 8px 0; letter-spacing: 0.5px; }
+        .section-title { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin: 16px 0 8px 0; letter-spacing: 0.5px; }
         
         .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 16px; }
         .kpi-card { background: var(--bg-slate); padding: 10px; border-radius: 8px; border-left: 3px solid var(--primary); }
@@ -85,34 +85,66 @@
         .kpi-title { font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
         .kpi-value { font-size: 1.1rem; font-weight: 700; margin-top: 2px; }
 
-        .chart-box { height: 280px; margin: 12px 0 20px 0; position: relative; }
+        .chart-box { height: 280px; margin: 12px 0 24px 0; position: relative; padding-bottom: 10px; }
 
-        .table-container { overflow-x: auto; }
+        .table-container { overflow-x: auto; margin-top: 8px; }
         table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.82rem; }
         th, td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
         th { background: var(--bg-slate); font-weight: 600; color: var(--text-muted); }
 
         .print-header { display: none; }
 
-        /* PDF / Druck-Optimierung */
+        /* ==========================================
+           OPTIMIERTER PDF- / DRUCK-BLOCK (@media print)
+           ========================================== */
         @media print {
-            body { background: #fff; color: #000; padding: 0; font-size: 11pt; }
-            .container { display: block; max-width: 100%; }
-            .card { border: none; box-shadow: none; padding: 0; margin-bottom: 15px; }
-            .btn-print, .form-group, p.desc { display: none !important; }
+            @page {
+                size: A4 portrait;
+                margin: 12mm 12mm 12mm 12mm;
+            }
+
+            body { background: #fff !important; color: #000 !important; padding: 0 !important; font-size: 10pt; }
+            .container { display: block !important; max-width: 100% !important; width: 100% !important; }
+            .card { border: none !important; box-shadow: none !important; padding: 0 !important; margin-bottom: 12px !important; }
+            
+            /* Interaktive Elemente ausblenden */
+            .btn-print, .form-group, p.desc, .subtitle { display: none !important; }
+            
+            /* Druckkopf anzeigen */
             .print-header { 
                 display: block !important; 
-                border-bottom: 2px solid #000; 
-                padding-bottom: 10px; 
-                margin-bottom: 15px; 
+                border-bottom: 2px solid #0f172a; 
+                padding-bottom: 8px; 
+                margin-bottom: 14px; 
             }
-            .print-header h2 { font-size: 16pt; margin-bottom: 4px; }
-            .print-meta { font-size: 9pt; color: #444; display: flex; justify-content: space-between; }
-            .chart-box { height: 220px !important; page-break-inside: avoid; }
-            .table-container { page-break-inside: avoid; }
-            table th, table td { padding: 5px 8px; border-bottom: 1px solid #ccc; }
-            .risk-banner { border: 1px solid #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .kpi-card { border: 1px solid #ccc; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .print-header h2 { font-size: 15pt; font-weight: 700; margin-bottom: 4px; color: #0f172a; }
+            .print-meta { font-size: 8.5pt; color: #475569; display: flex; justify-content: space-between; }
+
+            /* Banner & KPIs fixieren */
+            .risk-banner { border: 1px solid #cbd5e1; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin-bottom: 12px !important; }
+            .kpi-grid { gap: 8px !important; margin-bottom: 14px !important; page-break-inside: avoid; }
+            .kpi-card { border: 1px solid #cbd5e1; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 8px !important; }
+            
+            .section-title { margin: 12px 0 6px 0 !important; font-size: 7.5pt !important; }
+
+            /* Chart-Container isolieren & sauberen Abstand zur Tabelle erzwingen */
+            .chart-box { 
+                height: 220px !important; 
+                max-height: 220px !important;
+                margin-bottom: 32px !important; 
+                padding-bottom: 15px !important;
+                page-break-inside: avoid; 
+                position: relative !important;
+                display: block !important;
+            }
+
+            /* Tabelle schützen */
+            .table-container { 
+                page-break-inside: avoid; 
+                margin-top: 10px !important; 
+                clear: both !important;
+            }
+            table th, table td { padding: 4px 6px !important; font-size: 8pt !important; border-bottom: 1px solid #e2e8f0 !important; }
         }
     </style>
 </head>
@@ -216,10 +248,12 @@
 </div>
 
 <script>
+    // Sättigungsdampfdruck nach Magnus (hPa)
     function getE(T) {
         return 6.112 * Math.exp((17.62 * T) / (243.12 + T));
     }
 
+    // Taupunkttemperatur (°C)
     function getTdp(e) {
         const alpha = Math.log(e / 6.112);
         return (243.12 * alpha) / (17.62 - alpha);
@@ -289,7 +323,7 @@
             text.textContent = `Optimales Klimaintervall (${T_min.toFixed(1)}°C bis ${T_max.toFixed(1)}°C): RH liegt zwischen ${RH_max.toFixed(1)}% und ${RH_min.toFixed(1)}%.`;
         }
 
-        // KPIs
+        // KPIs aktualisieren
         document.getElementById('kpi-tdp').textContent = Tdp.toFixed(1) + ' °C';
         document.getElementById('kpi-x1').textContent = x_base.toFixed(2) + ' g/kg';
         document.getElementById('kpi-av1').textContent = Av_base.toFixed(2) + ' g/m³';
@@ -379,7 +413,7 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                animation: false, // Für schnelles Rendering beim Drucken
+                animation: false,
                 interaction: { mode: 'index', intersect: false },
                 scales: {
                     x: {
@@ -406,6 +440,13 @@
             }
         });
     }
+
+    // Vor dem Drucken Chart-Größe neu berechnen, um Achsenüberlappung zu verhindern
+    window.addEventListener('beforeprint', () => {
+        if (chartInstance) {
+            chartInstance.resize();
+        }
+    });
 
     document.querySelectorAll('input, select').forEach(el => el.addEventListener('input', calculate));
     calculate();
