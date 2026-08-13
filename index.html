@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feuchtigkeits-, h,x- & Kondensatrechner</title>
+    <style>
+        :root {
+            --primary: #0284c7;
+            --bg-slate: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #475569;
+            --border: #e2e8f0;
+
+            --status-ok-bg: #dcfce7;
+            --status-ok-text: #166534;
+            --status-dry-bg: #e0f2fe;
+            --status-dry-text: #0369a1;
+            --status-warn-bg: #fef9c3;
+            --status-warn-text: #854d0e;
+            --status-mold-bg: #ffedd5;
+            --status-mold-text: #9a3412;
+            --status-danger-bg: #fee2e2;
+            --status-danger-text: #991b1b;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+        body { background: var(--bg-slate); color: var(--text-main); padding: 20px; line-height: 1.5; }
+        .container { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 320px 1fr; gap: 24px; }
+        @media (max-width: 900px) { .container { grid-template-columns: 1fr; } }
+
+        .card { background: var(--card-bg); border-radius: 12px; padding: 20px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        h1 { font-size: 1.3rem; font-weight: 700; color: var(--primary); margin-bottom: 6px; }
+        p.desc { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px; }
+
+        .form-group { margin-bottom: 14px; }
+        label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; }
+        input, select { width: 100%; padding: 9px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; background: #fff; }
+        input:focus, select:focus { outline: none; border-color: var(--primary); }
+
+        .risk-banner {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .status-ok { background: var(--status-ok-bg); color: var(--status-ok-text); }
+        .status-dry { background: var(--status-dry-bg); color: var(--status-dry-text); }
+        .status-warn { background: var(--status-warn-bg); color: var(--status-warn-text); }
+        .status-mold { background: var(--status-mold-bg); color: var(--status-mold-text); }
+        .status-danger { background: var(--status-danger-bg); color: var(--status-danger-text); }
+
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 16px; }
+        .kpi-card { background: var(--bg-slate); padding: 10px; border-radius: 8px; border-left: 3px solid var(--primary); }
+        .kpi-title { font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
+        .kpi-value { font-size: 1.15rem; font-weight: 700; margin-top: 2px; }
+
+        .canvas-label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
+        .canvas-container { position: relative; width: 100%; height: 260px; background: #fafafa; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px; }
+        canvas { width: 100%; height: 100%; display: block; }
+
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.82rem; }
+        th, td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+        th { background: var(--bg-slate); font-weight: 600; color: var(--text-muted); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Eingabebereich -->
+    <div class="card">
+        <h1>hx-Luftrechner</h1>
+        <p class="desc">Klimaanalyse über Temperaturbereiche für Büros, Labore, Hörsäle und technische Anlagen.</p>
+
+        <div class="form-group">
+            <label for="roomType">Nutzungsbereich</label>
+            <select id="roomType">
+                <option value="office">Büro / Hörsaal (DIN EN 16798)</option>
+                <option value="lab">Labor / Messraum (Feuchtekorridor)</option>
+                <option value="tech">Technikraum / Keller (Taupunktschutz)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="tBase">Basis-Temperatur (°C)</label>
+            <input type="number" id="tBase" value="20" step="0.1">
+        </div>
+        <div class="form-group">
+            <label for="tRange">Temperaturbereich (± °C)</label>
+            <input type="number" id="tRange" value="5" min="0.5" max="30" step="0.5">
+        </div>
+        <div class="form-group">
+            <label for="rhBase">Rel. Feuchte bei Basis-Temp. (%)</label>
+            <input type="number" id="rhBase" value="50" min="1" max="100" step="1">
+        </div>
+        <div class="form-group">
+            <label for="pabs">Luftdruck p<sub>abs</sub> (hPa)</label>
+            <input type="number" id="pabs" value="1013.25" step="1">
+        </div>
+    </div>
+
+    <!-- Ergebnisse, h,x Diagramm & Tabelle -->
+    <div class="card">
+        <div id="riskBanner" class="risk-banner status-ok">
+            <span id="riskIcon">✓</span>
+            <span id="riskText">Analyse wird geladen...</span>
+        </div>
+
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-title">Taupunkt (T<sub>dp</sub>)</div>
+                <div class="kpi-value" id="kpi-tdp">-- °C</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">Spez. Feuchte (x)</div>
+                <div class="kpi-value" id="kpi-x1">-- g/kg</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">Abs. Feuchte (A<sub>v</sub>)</div>
+                <div class="kpi-value" id="kpi-av1">-- g/m³</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">Max. Kondensat</div>
+                <div class="kpi-value" id="kpi-cond">0.00 g/kg</div>
+            </div>
+        </div>
+
+        <span class="canvas-label">Vereinfachtes h,x-Diagramm (Temperaturverlauf & Sättigungslinie):</span>
+        <div class="canvas-container">
+            <canvas id="hxCanvas"></canvas>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Temp. (°C)</th>
+                        <th>Rel. Feuchte (%)</th>
+                        <th>Abs. Feuchte (g/m³)</th>
+                        <th>Spez. Feuchte (g/kg)</th>
+                        <th>Kondensat (g/kg)</th>
+                        <th>Kondensat (g/m³)</th>
+                    </tr>
+                </thead>
+                <tbody id="result-table"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Sättigungsdampfdruck nach Magnus (hPa)
+    function getE(T) {
+        return 6.112 * Math.exp((17.62 * T) / (243.12 + T));
+    }
+
+    // Taupunkttemperatur (°C)
+    function getTdp(e) {
+        const alpha = Math.log(e / 6.112);
+        return (243.12 * alpha) / (17.62 - alpha);
+    }
+
+    function calculate() {
+        const T_base = parseFloat(document.getElementById('tBase').value) || 20;
+        const T_range = parseFloat(document.getElementById('tRange').value) || 0;
+        const RH_base = parseFloat(document.getElementById('rhBase').value) || 50;
+        const pabs = parseFloat(document.getElementById('pabs').value) || 1013.25;
+
+        const T_min = T_base - T_range;
+        const T_max = T_base + T_range;
+
+        // Zustand bei Basis-Temperatur
+        const E_base = getE(T_base);
+        const e_base = E_base * (RH_base / 100);
+        const Tdp = getTdp(e_base);
+        const x_base = 622 * (e_base / (pabs - e_base));
+        const Av_base = 216.7 * (e_base / (T_base + 273.15));
+
+        // Auswertung bei Tiefsttemperatur (T_min)
+        const E_min = getE(T_min);
+        let RH_min = (e_base / E_min) * 100;
+        let maxCondX = 0;
+        let maxCondAv = 0;
+
+        if (T_min < Tdp) {
+            RH_min = 100;
+            const x_min_sat = 622 * (E_min / (pabs - E_min));
+            const Av_min_sat = 216.7 * (E_min / (T_min + 273.15));
+            maxCondX = Math.max(0, x_base - x_min_sat);
+            const Av_base_comp = Av_base * ((T_base + 273.15) / (T_min + 273.15));
+            maxCondAv = Math.max(0, Av_base_comp - Av_min_sat);
+        }
+
+        // Auswertung bei Höchsttemperatur (T_max)
+        const E_max = getE(T_max);
+        const RH_max = (e_base / E_max) * 100;
+
+        // Risikobewertung über das gesamte Intervall
+        const banner = document.getElementById('riskBanner');
+        const icon = document.getElementById('riskIcon');
+        const text = document.getElementById('riskText');
+
+        if (maxCondX > 0 || T_min <= Tdp) {
+            banner.className = 'risk-banner status-danger';
+            icon.textContent = '🚨';
+            text.textContent = `Achtung Betauung! Bei ${T_min.toFixed(1)}°C fallen bis zu ${maxCondX.toFixed(2)} g/kg Kondensat aus.`;
+        } else if (RH_min >= 80) {
+            banner.className = 'risk-banner status-mold';
+            icon.textContent = '☣️';
+            text.textContent = `Schimmelrisiko! Bei Abkühlung auf ${T_min.toFixed(1)}°C steigt RH auf ${RH_min.toFixed(1)}% (≥ 80% DIN 4108-2).`;
+        } else if (RH_min > 65) {
+            banner.className = 'risk-banner status-warn';
+            icon.textContent = '⚠️';
+            text.textContent = `Feuchte erhöht. Bei ${T_min.toFixed(1)}°C wird RH = ${RH_min.toFixed(1)}% erreicht (Mikroklima an kühlen Flächen beachten).`;
+        } else if (RH_max < 30) {
+            banner.className = 'risk-banner status-dry';
+            icon.textContent = '🌵';
+            text.textContent = `Zu trocken bei Erwärmung! Bei ${T_max.toFixed(1)}°C fällt RH auf ${RH_max.toFixed(1)}% (Atemwegsreizung / Elektrostatik).`;
+        } else {
+            banner.className = 'risk-banner status-ok';
+            icon.textContent = '✓';
+            text.textContent = `Optimales Klimaintervall (${T_min.toFixed(1)}°C bis ${T_max.toFixed(1)}°C): RH liegt zwischen ${RH_max.toFixed(1)}% und ${RH_min.toFixed(1)}%.`;
+        }
+
+        // KPIs aktualisieren
+        document.getElementById('kpi-tdp').textContent = Tdp.toFixed(1) + ' °C';
+        document.getElementById('kpi-x1').textContent = x_base.toFixed(2) + ' g/kg';
+        document.getElementById('kpi-av1').textContent = Av_base.toFixed(2) + ' g/m³';
+        document.getElementById('kpi-cond').textContent = maxCondX > 0 ? `${maxCondX.toFixed(2)} g/kg` : '0.00 g/kg';
+
+        // Tabelle befüllen (Schritte von T_min bis T_max)
+        const tbody = document.getElementById('result-table');
+        tbody.innerHTML = '';
+        const steps = 10;
+        const tempStep = (T_max - T_min) / steps;
+
+        for (let i = 0; i <= steps; i++) {
+            const T = T_min + (tempStep * i);
+            const E_i = getE(T);
+            let e_i = e_base;
+            let rh_i = (e_i / E_i) * 100;
+            let cX = 0, cAv = 0;
+
+            if (T < Tdp) {
+                rh_i = 100;
+                e_i = E_i;
+                const x_sat = 622 * (E_i / (pabs - E_i));
+                const Av_sat = 216.7 * (E_i / (T + 273.15));
+                cX = Math.max(0, x_base - x_sat);
+                const Av_comp = Av_base * ((T_base + 273.15) / (T + 273.15));
+                cAv = Math.max(0, Av_comp - Av_sat);
+            }
+
+            const Av_i = 216.7 * (e_i / (T + 273.15));
+            const x_i = 622 * (e_i / (pabs - e_i));
+
+            const isBaseRow = Math.abs(T - T_base) < 0.01;
+            tbody.innerHTML += `<tr ${isBaseRow ? 'style="font-weight: bold; background: #f1f5f9;"' : ''}>
+                <td>${T.toFixed(1)} ${isBaseRow ? '(Basis)' : ''}</td>
+                <td>${rh_i.toFixed(1)} %</td>
+                <td>${Av_i.toFixed(2)}</td>
+                <td>${x_i.toFixed(2)}</td>
+                <td>${cX > 0 ? cX.toFixed(2) : '-'}</td>
+                <td>${cAv > 0 ? cAv.toFixed(2) : '-'}</td>
+            </tr>`;
+        }
+
+        drawHxDiagram(T_min, T_base, T_max, x_base, Tdp, pabs);
+    }
+
+    // Vereinfachtes h,x-Diagramm (x auf X-Achse, T auf Y-Achse)
+    function drawHxDiagram(T_min, T_base, T_max, x_base, Tdp, pabs) {
+        const canvas = document.getElementById('hxCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+        
+        const w = canvas.width;
+        const h = canvas.height;
+        const pad = 40;
+
+        ctx.clearRect(0, 0, w, h);
+
+        const plotMinT = Math.min(0, T_min - 3);
+        const plotMaxT = Math.max(35, T_max + 3);
+        const plotMinX = 0;
+        const plotMaxX = Math.max(18, x_base + 5);
+
+        function mapX(val) { return pad + ((val - plotMinX) / (plotMaxX - plotMinX)) * (w - 2 * pad); }
+        function mapY(val) { return h - pad - ((val - plotMinT) / (plotMaxT - plotMinT)) * (h - 2 * pad); }
+
+        // Achsen
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(pad, pad); ctx.lineTo(pad, h - pad); ctx.lineTo(w - pad, h - pad);
+        ctx.stroke();
+
+        // Achsenbeschriftungen
+        ctx.fillStyle = '#64748b';
+        ctx.font = '10px sans-serif';
+        ctx.fillText('x (g/kg) →', w - pad - 40, h - 10);
+        ctx.fillText('T (°C) ↑', 5, pad - 10);
+
+        // Sättigungskurve RH = 100%
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        let started = false;
+        for (let t = plotMinT; t <= plotMaxT; t += 0.5) {
+            const E_t = getE(t);
+            const x_sat = 622 * (E_t / (pabs - E_t));
+            const px = mapX(x_sat);
+            const py = mapY(t);
+            if (px <= w - pad && py >= pad) {
+                if (!started) { ctx.moveTo(px, py); started = true; }
+                else ctx.lineTo(px, py);
+            }
+        }
+        ctx.stroke();
+        ctx.fillStyle = '#ef4444';
+        ctx.fillText('φ = 100%', w - pad - 55, pad + 15);
+
+        // Temperaturverlaufslinie (Schwankungsbereich)
+        const pxBase = mapX(x_base);
+        const pyMin = mapY(T_min);
+        const pyMax = mapY(T_max);
+
+        ctx.strokeStyle = '#0284c7';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(pxBase, pyMin);
+        ctx.lineTo(pxBase, pyMax);
+        ctx.stroke();
+
+        // Punkte zeichnen
+        function drawMarker(xVal, tVal, label, color) {
+            const px = mapX(xVal);
+            const py = mapY(tVal);
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(px, py, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillText(label, px + 8, py + 3);
+        }
+
+        drawMarker(x_base, T_base, `Basis (${T_base}°C)`, '#0284c7');
+        drawMarker(x_base, T_min, `T_min (${T_min.toFixed(1)}°C)`, '#0f172a');
+        drawMarker(x_base, T_max, `T_max (${T_max.toFixed(1)}°C)`, '#0f172a');
+    }
+
+    document.querySelectorAll('input, select').forEach(el => el.addEventListener('input', calculate));
+    window.addEventListener('resize', calculate);
+    calculate();
+</script>
+</body>
+</html>
