@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <title>Hx-Klimarechner Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -28,23 +28,29 @@
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
-        body { background: var(--bg-slate); color: var(--text-main); padding: 20px; line-height: 1.5; }
-        .container { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 320px 1fr; gap: 24px; }
-        @media (max-width: 900px) { .container { grid-template-columns: 1fr; } }
+        body { background: var(--bg-slate); color: var(--text-main); padding: 16px; line-height: 1.5; }
+        .container { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 320px 1fr; gap: 20px; }
 
-        .card { background: var(--card-bg); border-radius: 12px; padding: 20px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        /* Responsive Breakpoint für Smartphone & Tablet */
+        @media (max-width: 900px) { 
+            body { padding: 10px; }
+            .container { grid-template-columns: 1fr; gap: 16px; } 
+            input, select { font-size: 16px !important; } /* Verhindert Auto-Zoom auf iOS */
+        }
+
+        .card { background: var(--card-bg); border-radius: 12px; padding: 18px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         h1 { font-size: 1.3rem; font-weight: 700; color: var(--primary); margin-bottom: 2px; }
-        p.subtitle { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 16px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-        p.desc { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px; }
+        p.subtitle { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        p.desc { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px; }
 
-        .form-group { margin-bottom: 14px; }
+        .form-group { margin-bottom: 12px; }
         label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; }
-        input, select { width: 100%; padding: 9px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; background: #fff; }
+        input, select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; background: #fff; appearance: none; }
         input:focus, select:focus { outline: none; border-color: var(--primary); }
 
         .btn-print {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             background: var(--primary);
             color: #fff;
             border: none;
@@ -58,11 +64,12 @@
             justify-content: center;
             gap: 8px;
             transition: background 0.2s;
+            -webkit-tap-highlight-color: transparent;
         }
         .btn-print:hover { background: var(--primary-hover); }
 
         .risk-banner {
-            padding: 12px 16px;
+            padding: 12px 14px;
             border-radius: 8px;
             margin-bottom: 16px;
             font-size: 0.88rem;
@@ -77,7 +84,7 @@
         .status-mold { background: var(--status-mold-bg); color: var(--status-mold-text); }
         .status-danger { background: var(--status-danger-bg); color: var(--status-danger-text); }
 
-        .section-title { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin: 16px 0 8px 0; letter-spacing: 0.5px; }
+        .section-title { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin: 14px 0 8px 0; letter-spacing: 0.5px; }
         
         .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 16px; }
         .kpi-card { background: var(--bg-slate); padding: 10px; border-radius: 8px; border-left: 3px solid var(--primary); }
@@ -85,65 +92,30 @@
         .kpi-title { font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
         .kpi-value { font-size: 1.1rem; font-weight: 700; margin-top: 2px; }
 
-        .chart-box { height: 280px; margin: 12px 0 24px 0; position: relative; padding-bottom: 10px; }
+        .chart-box { height: 260px; margin: 10px 0 20px 0; position: relative; padding-bottom: 10px; }
 
-        .table-container { overflow-x: auto; margin-top: 8px; }
-        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.82rem; }
+        .table-container { overflow-x: auto; margin-top: 8px; -webkit-overflow-scrolling: touch; }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.82rem; white-space: nowrap; }
         th, td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
         th { background: var(--bg-slate); font-weight: 600; color: var(--text-muted); }
 
         .print-header { display: none; }
 
-        /* ==========================================
-           OPTIMIERTER PDF- / DRUCK-BLOCK (@media print)
-           ========================================== */
+        /* PDF / Druck-Optimierung */
         @media print {
-            @page {
-                size: A4 portrait;
-                margin: 12mm 12mm 12mm 12mm;
-            }
-
+            @page { size: A4 portrait; margin: 12mm; }
             body { background: #fff !important; color: #000 !important; padding: 0 !important; font-size: 10pt; }
-            .container { display: block !important; max-width: 100% !important; width: 100% !important; }
+            .container { display: block !important; width: 100% !important; }
             .card { border: none !important; box-shadow: none !important; padding: 0 !important; margin-bottom: 12px !important; }
-            
-            /* Interaktive Elemente ausblenden */
             .btn-print, .form-group, p.desc, .subtitle { display: none !important; }
-            
-            /* Druckkopf anzeigen */
-            .print-header { 
-                display: block !important; 
-                border-bottom: 2px solid #0f172a; 
-                padding-bottom: 8px; 
-                margin-bottom: 14px; 
-            }
+            .print-header { display: block !important; border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 14px; }
             .print-header h2 { font-size: 15pt; font-weight: 700; margin-bottom: 4px; color: #0f172a; }
             .print-meta { font-size: 8.5pt; color: #475569; display: flex; justify-content: space-between; }
-
-            /* Banner & KPIs fixieren */
             .risk-banner { border: 1px solid #cbd5e1; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin-bottom: 12px !important; }
             .kpi-grid { gap: 8px !important; margin-bottom: 14px !important; page-break-inside: avoid; }
             .kpi-card { border: 1px solid #cbd5e1; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 8px !important; }
-            
-            .section-title { margin: 12px 0 6px 0 !important; font-size: 7.5pt !important; }
-
-            /* Chart-Container isolieren & sauberen Abstand zur Tabelle erzwingen */
-            .chart-box { 
-                height: 220px !important; 
-                max-height: 220px !important;
-                margin-bottom: 32px !important; 
-                padding-bottom: 15px !important;
-                page-break-inside: avoid; 
-                position: relative !important;
-                display: block !important;
-            }
-
-            /* Tabelle schützen */
-            .table-container { 
-                page-break-inside: avoid; 
-                margin-top: 10px !important; 
-                clear: both !important;
-            }
+            .chart-box { height: 220px !important; max-height: 220px !important; margin-bottom: 32px !important; page-break-inside: avoid; }
+            .table-container { page-break-inside: avoid; margin-top: 10px !important; }
             table th, table td { padding: 4px 6px !important; font-size: 8pt !important; border-bottom: 1px solid #e2e8f0 !important; }
         }
     </style>
@@ -154,8 +126,7 @@
     <!-- Eingabebereich -->
     <div class="card">
         <h1>Hx-Klimarechner Pro</h1>
-        <p class="subtitle">TGA & Facility Management Edition</p>
-        <p class="desc">Gleichzeitige Analyse von relativer Feuchte (Behaglichkeit) und spezifischer Feuchte (Anlagentechnik).</p>
+        <p class="subtitle">TGA & Facility Management</p>
 
         <div class="form-group">
             <label for="roomType">Nutzungsbereich</label>
@@ -168,19 +139,19 @@
 
         <div class="form-group">
             <label for="tBase">Basis-Temperatur (°C)</label>
-            <input type="number" id="tBase" value="20" step="0.1">
+            <input type="number" id="tBase" value="20" step="0.1" inputmode="decimal">
         </div>
         <div class="form-group">
             <label for="tRange">Temperaturbereich (± °C)</label>
-            <input type="number" id="tRange" value="5" min="0.5" max="30" step="0.5">
+            <input type="number" id="tRange" value="5" min="0.5" max="30" step="0.5" inputmode="decimal">
         </div>
         <div class="form-group">
             <label for="rhBase">Rel. Feuchte bei Basis-Temp. (%)</label>
-            <input type="number" id="rhBase" value="50" min="1" max="100" step="1">
+            <input type="number" id="rhBase" value="50" min="1" max="100" step="1" inputmode="numeric">
         </div>
         <div class="form-group">
             <label for="pabs">Barometerdruck p<sub>abs</sub> (hPa)</label>
-            <input type="number" id="pabs" value="1013.25" step="1">
+            <input type="number" id="pabs" value="1013.25" step="1" inputmode="decimal">
         </div>
 
         <button class="btn-print" onclick="window.print()">
@@ -190,7 +161,6 @@
 
     <!-- Ergebnisse & Auswertung -->
     <div class="card">
-        <!-- Druckkopf (Nur beim Drucken sichtbar) -->
         <div class="print-header">
             <h2>Hx-Klimarechner Pro – Prüfprotokoll</h2>
             <div class="print-meta">
@@ -234,8 +204,8 @@
                 <thead>
                     <tr>
                         <th>Temp. (°C)</th>
-                        <th>Rel. Feuchte (%) [Nutzer]</th>
-                        <th>Spez. Feuchte (g/kg) [Anlage]</th>
+                        <th>Rel. Feuchte (%)</th>
+                        <th>Spez. Feuchte (g/kg)</th>
                         <th>Abs. Feuchte (g/m³)</th>
                         <th>Kondensat Δx (g/kg)</th>
                         <th>Kondensat ΔA<sub>v</sub> (g/m³)</th>
@@ -248,12 +218,10 @@
 </div>
 
 <script>
-    // Sättigungsdampfdruck nach Magnus (hPa)
     function getE(T) {
         return 6.112 * Math.exp((17.62 * T) / (243.12 + T));
     }
 
-    // Taupunkttemperatur (°C)
     function getTdp(e) {
         const alpha = Math.log(e / 6.112);
         return (243.12 * alpha) / (17.62 - alpha);
@@ -270,14 +238,12 @@
         const T_min = T_base - T_range;
         const T_max = T_base + T_range;
 
-        // Basis-Zustand
         const E_base = getE(T_base);
         const e_base = E_base * (RH_base / 100);
         const Tdp = getTdp(e_base);
         const x_base = 622 * (e_base / (pabs - e_base));
         const Av_base = 216.7 * (e_base / (T_base + 273.15));
 
-        // Tiefsttemperatur (T_min)
         const E_min = getE(T_min);
         let RH_min = (e_base / E_min) * 100;
         let maxCondX = 0;
@@ -292,11 +258,9 @@
             maxCondAv = Math.max(0, Av_base_comp - Av_min_sat);
         }
 
-        // Höchsttemperatur (T_max)
         const E_max = getE(T_max);
         const RH_max = (e_base / E_max) * 100;
 
-        // Risikobewertung
         const banner = document.getElementById('riskBanner');
         const icon = document.getElementById('riskIcon');
         const text = document.getElementById('riskText');
@@ -304,7 +268,7 @@
         if (maxCondX > 0 || T_min <= Tdp) {
             banner.className = 'risk-banner status-danger';
             icon.textContent = '🚨';
-            text.textContent = `Achtung Kondensat/Betauung! Bei ${T_min.toFixed(1)}°C fallen ${maxCondX.toFixed(2)} g/kg Feuchte aus.`;
+            text.textContent = `Achtung Kondensat! Bei ${T_min.toFixed(1)}°C fallen ${maxCondX.toFixed(2)} g/kg Feuchte aus.`;
         } else if (RH_min >= 80) {
             banner.className = 'risk-banner status-mold';
             icon.textContent = '☣️';
@@ -316,24 +280,21 @@
         } else if (RH_max < 30) {
             banner.className = 'risk-banner status-dry';
             icon.textContent = '🌵';
-            text.textContent = `Zu trocken bei Erwärmung! Bei ${T_max.toFixed(1)}°C fällt RH auf ${RH_max.toFixed(1)}%.`;
+            text.textContent = `Zu trocken! Bei ${T_max.toFixed(1)}°C fällt RH auf ${RH_max.toFixed(1)}%.`;
         } else {
             banner.className = 'risk-banner status-ok';
             icon.textContent = '✓';
             text.textContent = `Optimales Klimaintervall (${T_min.toFixed(1)}°C bis ${T_max.toFixed(1)}°C): RH liegt zwischen ${RH_max.toFixed(1)}% und ${RH_min.toFixed(1)}%.`;
         }
 
-        // KPIs aktualisieren
         document.getElementById('kpi-tdp').textContent = Tdp.toFixed(1) + ' °C';
         document.getElementById('kpi-x1').textContent = x_base.toFixed(2) + ' g/kg';
         document.getElementById('kpi-av1').textContent = Av_base.toFixed(2) + ' g/m³';
         document.getElementById('kpi-cond').textContent = maxCondX > 0 ? `${maxCondX.toFixed(2)} g/kg` : '0.00 g/kg';
 
-        // Druck-Kopf Metadaten
         document.getElementById('print-params').textContent = `Basis: ${T_base}°C (±${T_range}°C) | RH: ${RH_base}% | Druck: ${pabs} hPa`;
         document.getElementById('print-date').textContent = `Datum: ${new Date().toLocaleDateString('de-DE')}`;
 
-        // Datenreihen für Diagramm & Tabelle
         const labels = [];
         const rhData = [];
         const specData = [];
@@ -381,7 +342,6 @@
         renderDualChart(labels, rhData, specData);
     }
 
-    // Chart.js mit doppelter Y-Achse (Rel. Feuchte & Spez. Feuchte)
     function renderDualChart(labels, rhData, specData) {
         const ctx = document.getElementById('dualChart').getContext('2d');
         if (chartInstance) chartInstance.destroy();
@@ -392,7 +352,7 @@
                 labels: labels,
                 datasets: [
                     {
-                        label: 'Rel. Feuchte (%) [Nutzer]',
+                        label: 'Rel. Feuchte (%)',
                         data: rhData,
                         borderColor: '#0284c7',
                         backgroundColor: 'rgba(2, 132, 199, 0.08)',
@@ -401,7 +361,7 @@
                         yAxisID: 'y'
                     },
                     {
-                        label: 'Spez. Feuchte x (g/kg) [Anlage]',
+                        label: 'Spez. Feuchte x (g/kg)',
                         data: specData,
                         borderColor: '#8b5cf6',
                         borderDash: [5, 5],
@@ -414,6 +374,10 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 animation: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: true }
+                },
                 interaction: { mode: 'index', intersect: false },
                 scales: {
                     x: {
@@ -441,11 +405,8 @@
         });
     }
 
-    // Vor dem Drucken Chart-Größe neu berechnen, um Achsenüberlappung zu verhindern
     window.addEventListener('beforeprint', () => {
-        if (chartInstance) {
-            chartInstance.resize();
-        }
+        if (chartInstance) chartInstance.resize();
     });
 
     document.querySelectorAll('input, select').forEach(el => el.addEventListener('input', calculate));
